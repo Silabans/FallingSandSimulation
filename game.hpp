@@ -4,12 +4,15 @@
 #include "grid.hpp"
 
 
+inline float gravity = 1.0f;
+
 // Forward declarations
 void UpdateCell(int x, int y);
 void UpdateSandPhysics(int x, int y, const ElementProperties& props, Cell& cell);
 void UpdateLiquidPhysics(int x, int y, const ElementProperties& props, Cell& cell);
-void UpdateGasPhysics(int x, int y, const ElementProperties& props);
+void UpdateGasPhysics(int x, int y, const ElementProperties& props, Cell& cell);
 void ReactAcid(int x, int y, int targetX, int targetY, const ElementProperties& acidProps, const ElementProperties& targetProps);
+void ReactFire(int x, int y, int targetX, int targetY, const ElementProperties& acidProps, const ElementProperties& targetProps);
 
 
 void UpdateSimulation() {
@@ -52,10 +55,12 @@ void UpdateCell(int x, int y) {
             ReactAcid(nx, ny, x, y, targetProps, props);
         }
 
-        if (targetType == ElementType::FIRE) {
-            // Implement interaction with fire
+        if (cell.type == ElementType::FIRE) {
+            ReactFire(x, y, nx, ny, props, targetProps);
         }
     }
+
+    if (cell.type == ElementType::EMPTY) return;
 
     switch (props.movement) {
         case MovementType::IMMOVABLE:
@@ -67,19 +72,23 @@ void UpdateCell(int x, int y) {
             UpdateLiquidPhysics(x, y, props, cell);
             break;
         case MovementType::GAS:
-            UpdateGasPhysics(x, y, props);
+            UpdateGasPhysics(x, y, props, cell);
             break;
     }
-
-    cell.lastFrame = currentFrame;
 }
 
 
 void UpdateSandPhysics(int x, int y, const ElementProperties& props, Cell& cell) {
-    if (isEmpty(x, y + 1) && cell.speed >= 4) {
-        moveCell(x, y, x, y + cell.speed / 4);
-        cell.speed += 1;
-        return;
+    int ny = y;
+    for (int i = cell.speed; i >= 1; --i) {
+        if (isEmpty(x, y + i)) {
+            ny = y + i;
+            break;
+        }
+    }
+    if (ny != y) {
+        moveCell(x, y, x, ny);
+        cell.speed += gravity;
     }
     
     bool goLeft = GetRandomValue(0, 1) == 0;
@@ -91,10 +100,13 @@ void UpdateSandPhysics(int x, int y, const ElementProperties& props, Cell& cell)
         int shift = GetRandomValue(-1, end);
         if (shift == end) shift = 1;
         else if (shift > -1 && shift < end) shift = 0;
-        ElementProperties below_props = ELEMENT_REGISTRY[static_cast<int>(grid[coor(x+shift, y+1)].type)];
-        if (below_props.density < props.density) {
-            swapCell(x, y, x+shift, y + 1);
-            return;
+
+        if (inBounds(x + shift, y + 1)) {
+            ElementProperties below_props = ELEMENT_REGISTRY[static_cast<int>(grid[coor(x+shift, y+1)].type)];
+            if (below_props.density < props.density) {
+                swapCell(x, y, x+shift, y + 1);
+                return;
+            }
         }
     }
 
@@ -110,7 +122,6 @@ void UpdateLiquidPhysics(int x, int y, const ElementProperties& props, Cell& cel
     if (isEmpty(x, y + 1) && cell.speed >= 4) {
         moveCell(x, y, x, y + cell.speed / 4);
         cell.speed += 1;
-        return;
     }
     
     if (inBounds(x, y + 1)) {
@@ -118,10 +129,13 @@ void UpdateLiquidPhysics(int x, int y, const ElementProperties& props, Cell& cel
         int shift = GetRandomValue(-1, end);
         if (shift == end) shift = 1;
         else if (shift > -1 && shift < end) shift = 0;
-        ElementProperties below_props = ELEMENT_REGISTRY[static_cast<int>(grid[coor(x+shift, y+1)].type)];
-        if (below_props.density < props.density) {
-            swapCell(x, y, x+shift, y + 1);
-            return;
+
+        if (inBounds(x + shift, y + 1)) {
+            ElementProperties below_props = ELEMENT_REGISTRY[static_cast<int>(grid[coor(x+shift, y+1)].type)];
+            if (below_props.density < props.density) {
+                swapCell(x, y, x+shift, y + 1);
+                return;
+        }
         }
     }
 
@@ -167,20 +181,59 @@ void UpdateLiquidPhysics(int x, int y, const ElementProperties& props, Cell& cel
 }
 
 
-void UpdateGasPhysics(int x, int y, const ElementProperties& props) {
-    if (currentFrame % 2 != 0) return;
+void UpdateGasPhysics(int x, int y, const ElementProperties& props, Cell& cell) {
+    // Fire lifetime decay logic
+    if (cell.type == ElementType::FIRE) {
+        if (cell.life > 0) {
+            if (GetRandomValue(1, 100) > 15) cell.life--;
+        } else {
+            // Turn dead fire into smoke with a high probability
+            if (GetRandomValue(1, 100) <= 70) {
+                grid[coor(x, y)] = Cell{ ElementType::SMOKE, 15, 15, (uint8_t)currentFrame, 1 };
+            } else {
+                grid[coor(x, y)] = Cell{ ElementType::EMPTY, 0, 0, 0, 0 };
+            }
+            return;
+        }
 
-    static int dx[] = {-1, 1, 0, 0};
-    static int dy[] = {0, 0, 1, -1};
-    int dir = GetRandomValue(0, 3);
-
-    for (int i = 0; i < 4; ++i) {
-        if (isEmpty(x + dx[dir], y + dy[dir]) && inBounds(x + dx[dir], y + dy[dir])) break;
-        dir = GetRandomValue(0, 3);
+        // Throttle fire movement rate
+        if (currentFrame % 3 != 0) return;
     }
 
-    if (inBounds(x + dx[dir], y + dy[dir])) moveCell(x, y, x + dx[dir], y + dy[dir]);
+    // Pick a single random horizontal direction for this frame pass
+    int spread = GetRandomValue(-props.dispersionRate, props.dispersionRate);
+    int xspread = (spread == 0.0f) ? 0.0f : spread / std::abs(spread);
+    
+    int yspread = (std::abs(spread) - 10 <= 0) ? -1 : 0;
+
+    // Upward Movement (Directly or Diagonally)
+    if (inBounds(x + xspread, y + yspread) && isEmpty(x + xspread, y + yspread)) {
+        moveCell(x, y, x + xspread, y + yspread);
+        return;
+    }
+
+    int dir = (GetRandomValue(0, 1) == 0) ? -1 : 1;
+    if (inBounds(x + dir, y - 1) && isEmpty(x + dir, y - 1)) {
+        moveCell(x, y, x + dir, y - 1);
+        return;
+    }
+    if (inBounds(x - dir, y - 1) && isEmpty(x - dir, y - 1)) {
+        moveCell(x, y, x - dir, y - 1);
+        return;
+    }
+
+
+    // Local Diffusion (Single-step Brownian Motion)
+    if (inBounds(x + dir, y) && isEmpty(x + dir, y)) {
+        moveCell(x, y, x + dir, y);
+        return;
+    }
+    if (inBounds(x - dir, y) && isEmpty(x - dir, y)) {
+        moveCell(x, y, x - dir, y);
+        return;
+    }
 }
+
 
 
 // Reactions
@@ -188,23 +241,44 @@ void ReactAcid(int x, int y, int targetX, int targetY, const ElementProperties& 
     Cell& acid = grid[coor(x, y)];
     Cell& target = grid[coor(targetX, targetY)];
 
-
-
     if (target.type == ElementType::ACID || target.type == ElementType::EMPTY) return;
     if (targetProps.acidResistance >= 1.0f) return; // for materials that are immune to acid
 
     if (GetRandomValue(1, 100) > 30) return; // 30 percent chance only for acid to react
 
-    float damage = 5 * (1 - targetProps.acidResistance);
+    float damage = 5.0f * (1 - targetProps.acidResistance);
     target.health -= damage;
     acid.life -= 1; // Acid is consumed overtime as it burns the target
 
     if (target.health <= 0.0f) {
-        grid[coor(targetX, targetY)]= Cell{ ElementType::EMPTY, 0, 0, (uint8_t)currentFrame }; // reset the cell
+        grid[coor(targetX, targetY)]= Cell{ ElementType::EMPTY, 0, 0, (uint8_t)currentFrame, 0 }; // reset the cell
     }
-    if (acid.life == 0) {
+    if (acid.life <= 0) {
         grid[coor(x, y)] = Cell{ ElementType::EMPTY, 0, 0, (uint8_t)currentFrame };
     }
+}
+
+
+void ReactFire(int x, int y, int targetX, int targetY, const ElementProperties& fireProps, const ElementProperties& targetProps) {
+    Cell& fire = grid[coor(x, y)];
+    Cell& target = grid[coor(targetX, targetY)];
+
+    if (target.type == ElementType::FIRE) return;
+    if (!targetProps.isFlammable) return;
+
+    if (GetRandomValue(1, 100) > 90) return;
+
+    fire.life -= 10.0f;
+    target.health -= 5.0f;
+
+    if (target.health <= 0.0f) {
+        grid[coor(targetX, targetY)] = Cell{ ElementType::FIRE, 15, 0, (uint8_t)currentFrame, 1 };
+    }
+
+    if (fire.life <= 0.0f) {
+        grid[coor(x, y)] = Cell{ ElementType::SMOKE, 15, 0, (uint8_t)(currentFrame - 1), 1 };
+    }
+
 }
 
 
@@ -220,6 +294,7 @@ void UserInt(int radius) {
     else if (IsKeyDown(KEY_E)) type = ElementType::EMPTY;
     else if (IsKeyDown(KEY_D)) type = ElementType::WOOD;
     else if (IsKeyDown(KEY_G)) type = ElementType::SMOKE;
+    else if (IsKeyDown(KEY_F)) type = ElementType::FIRE;
 
     for (int dy = -radius; dy <= radius; ++dy) {
         for (int dx = -radius; dx <= radius; ++dx) {
@@ -229,9 +304,9 @@ void UserInt(int radius) {
                 Cell& c = grid[coor(mx + dx, my + dy)];
                 c.type = type.value();
                 c.health = props.maxHealth;
-                c.life = 15;
-                c.lastFrame = currentFrame;
-                c.speed = 0;
+                c.life = GetRandomValue(15, 50);
+                c.lastFrame = currentFrame > 0 ? currentFrame - 1 : 0; // set to 1 frame before -> so that it gets processed immediately
+                c.speed = 1;
             }
         }
     }
