@@ -2,11 +2,11 @@
 #include <random>
 
 
-inline int currentFrame = 0;
-const inline int SCREEN_WIDTH = 1920;
-const inline int SCREEN_HEIGHT = 1080;
+inline uint8_t currentFrame = 0;
+const inline int SCREEN_WIDTH = 1760;
+const inline int SCREEN_HEIGHT = 990;
 
-const inline int SCALE = 4;
+const inline int SCALE = 3;
 const inline int WIDTH = SCREEN_WIDTH / SCALE;
 const inline int HEIGHT = SCREEN_HEIGHT / SCALE;
 

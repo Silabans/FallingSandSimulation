@@ -7,14 +7,14 @@ int main() {
 
     InitGrid();
 
-    Color* pixels = (Color*)malloc(WIDTH * HEIGHT * sizeof(Color));
-    Image img = GenImageColor(WIDTH, HEIGHT, BLANK); //CPU memory
+    Color* pixels = (Color*)malloc(WIDTH * HEIGHT * sizeof(Color)); // allocate a block of memory for the pixels
+    Image img = GenImageColor(WIDTH, HEIGHT, BLACK); //CPU memory
     Texture2D texture = LoadTextureFromImage(img); //Loads the CPU image data into the GPU memory
 
     while (!WindowShouldClose()) {
         // spawn sand or water
         UpdateSimulation();
-        UserInt(5);
+        UserInt(10);
 
         for (int i = 0; i < WIDTH * HEIGHT; ++i) {
             ElementType t = grid[i].type;
