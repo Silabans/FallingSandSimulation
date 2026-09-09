@@ -278,11 +278,41 @@ void ReactFire(int x, int y, int targetX, int targetY, const ElementProperties& 
 }
 
 
-void UserInt(int radius) {
-    Vector2 m = GetMousePosition();
-    int mx = static_cast<int>(m.x) / SCALE;
-    int my = static_cast<int>(m.y) / SCALE;
+void TriggerExplosion(int x, int y, int radius) {
+    for (int dx = -radius; dx <= radius; ++dx) {
+        for (int dy = -radius; dy <= radius; ++dy) {
+            int distSqrt = dy * dy + dx * dx;
+            int maxDist = radius * radius;
 
+            int nx = x + dx;
+            int ny = y + dy;
+            if (!inBounds(nx, ny)) continue;
+            if (distSqrt > maxDist) continue;
+
+            if (distSqrt < maxDist * 0.5f) {
+                if (GetRandomValue(1, 100) > 30) grid[coor(nx, ny)] = Cell{ ElementType::FIRE, 15, 15, (uint8_t)(currentFrame - 1), 1 };
+                else grid[coor(nx, ny)] = Cell{ ElementType::EMPTY, 0, 0, (uint8_t)(currentFrame), 0 };
+            } else {
+                // float casting to ensure that float / decimal point vectors are kept (to prevent a value of zero due to integer division)
+                float dist = std::sqrt(static_cast<float>(distSqrt));
+                // unit vectors/directions from the origin point (centre)
+                float dirx = dist == 0 ? 0 : static_cast<float>(dx) / dist; 
+                float diry = dist == 0 ? 0 : static_cast<float>(dy) / dist;
+
+                int targetX = nx + static_cast<int>(dirx * GetRandomValue(1, 3));
+                int targetY = ny + static_cast<int>(diry * GetRandomValue(1, 3));
+
+                if (inBounds(targetX, targetY) && isEmpty(targetX, targetY)) moveCell(nx, ny, targetX, targetY);
+                else grid[coor(nx, ny)] = Cell{ ElementType::SMOKE, 15, 15, (uint8_t)(currentFrame - 1), 1 };
+
+            }
+
+        }
+    }
+}
+
+
+void ResolveSpawning(int mx, int my, int radius) {
     std::optional<ElementType> type;
     if (IsKeyDown(KEY_S)) type = ElementType::SAND;
     else if (IsKeyDown(KEY_W)) type = ElementType::WATER;
@@ -294,7 +324,7 @@ void UserInt(int radius) {
 
     for (int dy = -radius; dy <= radius; ++dy) {
         for (int dx = -radius; dx <= radius; ++dx) {
-            if ((std::abs(dy) + std::abs(dx) - (radius / 2)) > radius) continue;
+            if ((dy * dy + dx * dx) >= radius * radius) continue;
             if (inBounds(mx + dx, my + dy) and type.has_value()) {
                 const ElementProperties& props = ELEMENT_REGISTRY[static_cast<int>(type.value())];
                 Cell& c = grid[coor(mx + dx, my + dy)];
@@ -306,4 +336,15 @@ void UserInt(int radius) {
             }
         }
     }
+}
+
+
+void UserInt(int radius) {
+    Vector2 m = GetMousePosition();
+    int mx = static_cast<int>(m.x) / SCALE;
+    int my = static_cast<int>(m.y) / SCALE;
+
+    ResolveSpawning(mx, my, radius);
+
+    if (IsKeyPressed(KEY_Q)) TriggerExplosion(mx, my, 40);
 }

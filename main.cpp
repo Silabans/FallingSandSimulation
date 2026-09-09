@@ -14,7 +14,7 @@ int main() {
     while (!WindowShouldClose()) {
         // spawn sand or water
         UpdateSimulation();
-        UserInt(10);
+        UserInt(15);
 
         for (int i = 0; i < WIDTH * HEIGHT; ++i) {
             ElementType t = grid[i].type;
