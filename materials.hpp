@@ -10,7 +10,8 @@ enum class ElementType : uint8_t { // each type takes up 1 byte instead the defa
     ACID,
     WOOD,
     SMOKE,
-    FIRE
+    FIRE,
+    STEAM
 };
 
 enum class MovementType : uint8_t {
@@ -40,7 +41,7 @@ inline const ElementProperties ELEMENT_REGISTRY[] {
     {"Water", MovementType::LIQUID, {50, 100, 230, 240}, 0.4f, false, 0.2f, 10.0f, 10},
     {"Acid", MovementType::LIQUID, {100, 230, 50, 240}, 0.6f, false, 1.0f, 10.0f, 4},
     {"Wood", MovementType::IMMOVABLE, {101, 67, 33, 200}, 0.9f, true, 0.3f, 20.0f, 0},
-    {"Smoke", MovementType::GAS, {128, 128, 128, 255}, 0.05f, false, 0.5f, 5.0f, 2},
-    {"Fire", MovementType::GAS, {255, 100, 0, 255}, 0.1f, false, 1.0f, 5.0f, 3}
+    {"Smoke", MovementType::GAS, {80, 80, 80, 255}, 0.05f, false, 0.5f, 5.0f, 2},
+    {"Fire", MovementType::GAS, {255, 100, 0, 255}, 0.2f, false, 1.0f, 5.0f, 3},
+    {"Steam", MovementType::GAS, {255, 255, 255, 220}, 0.1f, false, 0.5f, 5.0f, 4}
 };
-

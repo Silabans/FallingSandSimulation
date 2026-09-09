@@ -184,20 +184,11 @@ void UpdateLiquidPhysics(int x, int y, const ElementProperties& props, Cell& cel
 void UpdateGasPhysics(int x, int y, const ElementProperties& props, Cell& cell) {
     // Fire lifetime decay logic
     if (cell.type == ElementType::FIRE) {
-        if (cell.life > 0) {
-            if (GetRandomValue(1, 100) > 15) cell.life--;
-        } else {
-            // Turn dead fire into smoke with a high probability
-            if (GetRandomValue(1, 100) <= 70) {
-                grid[coor(x, y)] = Cell{ ElementType::SMOKE, 15, 15, (uint8_t)currentFrame, 1 };
-            } else {
-                grid[coor(x, y)] = Cell{ ElementType::EMPTY, 0, 0, 0, 0 };
-            }
-            return;
-        }
-
-        // Throttle fire movement rate
+        ResolveFire(x, y, cell);
         if (currentFrame % 3 != 0) return;
+    }
+    if (cell.type == ElementType::STEAM || cell.type == ElementType::SMOKE) {
+        ResolveTemporaryGas(x, y, cell);
     }
 
     // Pick a single random horizontal direction for this frame pass
@@ -264,15 +255,20 @@ void ReactFire(int x, int y, int targetX, int targetY, const ElementProperties& 
     Cell& target = grid[coor(targetX, targetY)];
 
     if (target.type == ElementType::FIRE) return;
-    if (!targetProps.isFlammable) return;
 
-    if (GetRandomValue(1, 100) > 90) return;
+    if (target.type == ElementType::WATER) {
+        grid[coor(targetX, targetY)] = Cell{ ElementType::STEAM, 5, 50, (uint8_t)(currentFrame - 1), 1 };
+        grid[coor(x, y)] = Cell{ ElementType::EMPTY, 0, 0, (uint8_t)(currentFrame), 0 };
+    }
+
+    if (!targetProps.isFlammable) return;
+    if (GetRandomValue(1, 100) > 80) return; // 20 percent chance not to catch fire
 
     fire.life -= 10.0f;
     target.health -= 5.0f;
 
     if (target.health <= 0.0f) {
-        grid[coor(targetX, targetY)] = Cell{ ElementType::FIRE, 15, 0, (uint8_t)currentFrame, 1 };
+        grid[coor(targetX, targetY)] = Cell{ ElementType::FIRE, 10, 0, (uint8_t)currentFrame, 1 };
     }
 
     if (fire.life <= 0.0f) {
@@ -304,7 +300,7 @@ void UserInt(int radius) {
                 Cell& c = grid[coor(mx + dx, my + dy)];
                 c.type = type.value();
                 c.health = props.maxHealth;
-                c.life = GetRandomValue(15, 50);
+                c.life = GetRandomValue(10, 40);
                 c.lastFrame = currentFrame > 0 ? currentFrame - 1 : 0; // set to 1 frame before -> so that it gets processed immediately
                 c.speed = 1;
             }

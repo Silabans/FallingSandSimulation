@@ -49,3 +49,37 @@ bool isEmpty(int x, int y) {
     if (!inBounds(x, y)) return false; // the boundaries are static walls (not empty)
     return grid[y * WIDTH + x].type == ElementType::EMPTY;
 }
+
+
+void ResolveFire(int x, int y, Cell& cell) {
+    if (cell.life > 0) {
+        if (GetRandomValue(1, 100) > 15) cell.life--;
+    } else {
+        // Turn dead fire into smoke with a high probability
+        if (GetRandomValue(1, 100) <= 70) {
+            grid[coor(x, y)] = Cell{ ElementType::SMOKE, 15, 15, (uint8_t)currentFrame, 1 };
+        } else {
+            grid[coor(x, y)] = Cell{ ElementType::EMPTY, 0, 0, 0, 0 };
+        }
+        return;
+    }
+}
+
+
+void ResolveTemporaryGas(int x, int y, Cell& cell) {
+    if (cell.type == ElementType::STEAM) {
+        if (cell.life > 0) {
+            if (GetRandomValue(1, 100) > 50) --cell.life;
+        } else {
+            if (GetRandomValue(1, 100) > 60) grid[coor(x, y)] = Cell{ ElementType::EMPTY, 0, 0, 0, 0 };
+            else grid[coor(x, y)] = Cell{ ElementType::WATER, 15, 15, (uint8_t)(currentFrame - 1), 1 };
+        }
+    }
+    if (cell.type == ElementType::SMOKE) {
+        if (cell.life > 0) {
+            if (GetRandomValue(1, 100) > 97) --cell.life;
+        } else {
+            grid[coor(x, y)] = Cell{ ElementType::EMPTY, 0, 0, 0, 0 };
+        }
+    }
+}
