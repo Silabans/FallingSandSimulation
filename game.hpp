@@ -264,17 +264,11 @@ void ReactFire(int x, int y, int targetX, int targetY, const ElementProperties& 
     if (!targetProps.isFlammable) return;
     if (GetRandomValue(1, 100) > 80) return; // 20 percent chance not to catch fire
 
-    fire.life -= 10.0f;
     target.health -= 5.0f;
 
     if (target.health <= 0.0f) {
-        grid[coor(targetX, targetY)] = Cell{ ElementType::FIRE, 10, 0, (uint8_t)currentFrame, 1 };
+        grid[coor(targetX, targetY)] = Cell{ ElementType::FIRE, 10, (uint8_t)GetRandomValue(20, 30), (uint8_t)currentFrame, 1 };
     }
-
-    if (fire.life <= 0.0f) {
-        grid[coor(x, y)] = Cell{ ElementType::SMOKE, 15, 0, (uint8_t)(currentFrame - 1), 1 };
-    }
-
 }
 
 
@@ -327,10 +321,12 @@ void ResolveSpawning(int mx, int my, int radius) {
             if ((dy * dy + dx * dx) >= radius * radius) continue;
             if (inBounds(mx + dx, my + dy) and type.has_value()) {
                 const ElementProperties& props = ELEMENT_REGISTRY[static_cast<int>(type.value())];
+                static const Color& hueShift = {40, 40, 40, 255};
                 Cell& c = grid[coor(mx + dx, my + dy)];
                 c.type = type.value();
+                c.colorOffset = props.colorOffset * GetRandomValue(3, 8);
                 c.health = props.maxHealth;
-                c.life = GetRandomValue(10, 40);
+                c.life = GetRandomValue(20, 30);
                 c.lastFrame = currentFrame > 0 ? currentFrame - 1 : 0; // set to 1 frame before -> so that it gets processed immediately
                 c.speed = 1;
             }

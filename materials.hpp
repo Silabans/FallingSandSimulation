@@ -27,6 +27,7 @@ struct ElementProperties {
     const char* name;
     MovementType movement;
     Color color;
+    float colorOffset;
     float density;
     bool isFlammable;
     float acidResistance;
@@ -36,12 +37,12 @@ struct ElementProperties {
 
 
 inline const ElementProperties ELEMENT_REGISTRY[] {
-    {"Empty", MovementType::IMMOVABLE, {0, 0, 0, 0}, 0.0f, false, 0.1f, 0.0f, 0},
-    {"Sand", MovementType::SAND_LIKE, {230, 190, 100, 255}, 0.7f, false, 0.5f, 20.0f, 0},
-    {"Water", MovementType::LIQUID, {50, 100, 230, 240}, 0.4f, false, 0.2f, 10.0f, 10},
-    {"Acid", MovementType::LIQUID, {100, 230, 50, 240}, 0.6f, false, 1.0f, 10.0f, 4},
-    {"Wood", MovementType::IMMOVABLE, {101, 67, 33, 200}, 0.9f, true, 0.3f, 20.0f, 0},
-    {"Smoke", MovementType::GAS, {80, 80, 80, 255}, 0.05f, false, 0.5f, 5.0f, 2},
-    {"Fire", MovementType::GAS, {255, 100, 0, 255}, 0.2f, false, 1.0f, 5.0f, 3},
-    {"Steam", MovementType::GAS, {255, 255, 255, 220}, 0.1f, false, 0.5f, 5.0f, 4}
+    {"Empty", MovementType::IMMOVABLE, {0, 0, 0, 0}, 0, 0.0f, false, 0.1f, 0.0f, 0},
+    {"Sand", MovementType::SAND_LIKE, {190, 190, 100, 255}, 30, 0.7f, false, 0.5f, 20.0f, 0},
+    {"Water", MovementType::LIQUID, {0, 200, 255, 255}, 20, 0.4f, false, 0.2f, 10.0f, 10},
+    {"Acid", MovementType::LIQUID, {100, 230, 80, 240}, 40, 0.6f, false, 1.0f, 10.0f, 4},
+    {"Wood", MovementType::IMMOVABLE, {110, 80, 50, 255}, 40, 0.9f, true, 0.3f, 20.0f, 0},
+    {"Smoke", MovementType::GAS, {80, 80, 90, 255}, 30, 0.05f, false, 0.5f, 5.0f, 2},
+    {"Fire", MovementType::GAS, {255, 130, 0, 255}, 30, 0.2f, false, 1.0f, 5.0f, 3},
+    {"Steam", MovementType::GAS, {255, 255, 255, 255}, 10, 0.1f, false, 0.5f, 5.0f, 4}
 };
